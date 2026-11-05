@@ -55,7 +55,7 @@
   "dependencies": {
     "@modelcontextprotocol/server": "^2.4.0",
     "fflate": "^0.8.3",
-    "imapflow": "^1.7.6",
+    "imapflow": "^2.10.0",
     "mailparser": "^3.14.1",
     "mcp-approval": "^0.8.2",
     "mcp-tool-allowlist": "^0.2.2",
