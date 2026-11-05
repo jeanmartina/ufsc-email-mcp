@@ -1,0 +1,268 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  schedule:
+    # Weekly, so the audit job also runs in quiet weeks.
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # Separate from `build`, which compiles only src/ into dist/. This also
+      # typechecks test/, which vitest transpiles without checking.
+      - run: npm run typecheck
+      - run: npm run build
+      # `files` publishes the build output verbatim, and `tsc` does not
+      # delete outputs whose source is gone. Deleting a module therefore leaves it
+      # in the tarball indefinitely — which is how a removed SMTP implementation
+      # nearly shipped inside a package whose security argument is that it cannot
+      # send mail. `prebuild` clears dist; this proves it, on the tree CI built.
+      - name: Check the build output has no orphans
+        if: matrix.node-version == 24
+        run: |
+          orphans=""
+          for js in $(find dist -name '*.js'); do
+            src="src/${js#dist/}"
+            [ -f "${src%.js}.ts" ] || orphans="$orphans $js"
+          done
+          if [ -n "$orphans" ]; then
+            echo "dist/ carries modules with no source:$orphans" >&2
+            echo "A stale build output would be published as-is." >&2
+            exit 1
+          fi
+          echo "every built module has a source"
+      - run: npm test
+        if: matrix.node-version != 24
+      - run: npm run test:coverage
+        if: matrix.node-version == 24
+      # The diagram is rendered into four copies from one source; fail if any of
+      # them was edited by hand. Only the PNG's dimensions are checked, not its
+      # bytes — fonts rasterise differently here than on a workstation.
+      - run: npm run assets:check
+        if: matrix.node-version == 24
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: matrix.node-version == 24
+        with:
+          name: coverage
+          path: coverage/
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      # --ignore-scripts: an audit must not execute the code it is auditing.
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+
+  dependency-review:
+    # `npm audit` checks the tree as it is; this checks the change. A pull
+    # request that adds a dependency with a known high-severity advisory is
+    # refused here, before the tree it produces is ever audited.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+
+  codeql:
+    # Code scanning needs GitHub Advanced Security, which a private repository
+    # on the Free plan does not have: the analysis runs fine and then the SARIF
+    # upload fails with "Resource not accessible by integration". Skipping it
+    # while private states that precondition instead of leaving a job that can
+    # never pass. It starts working by itself the day this repository is made
+    # public — nothing to remember.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # init and analyze must always move together — see the dependabot codeql group.
+      - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+
+  container-scan:
+    needs: test
+    runs-on: ubuntu-latest
+    # A container CVE used to be visible only as a red job: Trivy fails the build
+    # and uploads nothing, so nothing reaches the Security tab or the API, and a
+    # finding existed only for as long as someone was reading CI logs. The scan
+    # now also reports its results as code scanning alerts — which close
+    # themselves again once a later scan no longer sees them.
+    permissions:
+      # A job-level block replaces the workflow default, so contents is repeated.
+      contents: read
+      security-events: write
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            tag: amd64
+          - platform: linux/arm64
+            tag: arm64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          load: true
+          platforms: ${{ matrix.platform }}
+          tags: 'imap-mcp:audit-${{ matrix.tag }}'
+          cache-from: type=gha,scope=scan-${{ matrix.tag }}
+          cache-to: type=gha,mode=max,scope=scan-${{ matrix.tag }}
+      # Report first, gate second. This step never fails, so the SARIF is uploaded
+      # before the gate below can turn the job red — no `if: always()` needed, which
+      # would try to upload a file a crashed scan never wrote.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          # Pin Trivy itself: the action's default has been a release that was
+          # withdrawn upstream, and the installer then dies after "found version".
+          version: v0.74.0
+          image-ref: 'imap-mcp:audit-${{ matrix.tag }}'
+          format: sarif
+          output: trivy-${{ matrix.tag }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          # Without this the SARIF ignores `severity` and reports every level,
+          # so the Security tab would fill with LOW noise the gate never blocks on.
+          limit-severities-for-sarif: true
+
+      # Skipped while the repository is private — code scanning needs GitHub
+      # Advanced Security, which the Free plan does not include, and the upload
+      # would fail with "Resource not accessible by integration". Same gate as the
+      # codeql job, and it starts working by itself the day the repo goes public.
+      # Fork pull requests are excluded for a different reason: their token is
+      # read-only whatever this permissions block says.
+      - uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        # Every continuation line sits at the same indentation on purpose: a folded
+        # scalar keeps the newline of a *more* indented line, and the expression
+        # parser then rejects the workflow without naming a line.
+        if: >-
+          ${{ !github.event.repository.private &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository) }}
+        with:
+          sarif_file: trivy-${{ matrix.tag }}.sarif
+          # One category per matrix leg. Two uploads sharing a category replace
+          # each other, and one architecture's findings would vanish silently.
+          category: trivy-${{ matrix.tag }}
+
+      # The gate, unchanged in behaviour. It runs a second time rather than adding
+      # exit-code to the step above, because SARIF is not readable output: a red
+      # job would otherwise name no CVE in its log at all. Trivy and its database
+      # are already on disk here, so this costs seconds.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.74.0
+          image-ref: 'imap-mcp:audit-${{ matrix.tag }}'
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true
+
+  integration:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # The suite spawns dist/index.js, not src/. Building is not optional.
+      - run: npm run build
+      - name: Start GreenMail
+        env:
+          # On the weekly run, against :latest instead of the pin. Different
+          # question: the pinned run catches my regressions, this one catches
+          # GreenMail moving underneath the server. It is allowed to fail
+          # without blocking a pull request.
+          GREENMAIL_IMAGE: ${{ github.event_name == 'schedule' && 'greenmail/standalone:latest' || '' }}
+        run: docker compose -f test/integration/compose.yml up -d
+      - run: npm run test:integration
+      - if: failure()
+        run: docker compose -f test/integration/compose.yml logs --tail=200
+      - if: always()
+        # `down`, not `down -v`: GreenMail keeps everything in memory and has
+        # no volume, so stopping the container is the whole reset.
+        run: docker compose -f test/integration/compose.yml down
+
+  publish:
+    # `integration` is deliberately NOT in this list. It depends on GreenMail's
+    # image pulling from Docker Hub; a release that fails because a third
+    # party's registry is having an afternoon would be a gate with nothing to
+    # say. It blocks pull requests, which is where a regression in this server
+    # can still be stopped cheaply.
+    needs: [test, codeql, container-scan]
+    # Same gate as codeql, for a different reason: pushing an image out of a
+    # private repository would create a package nobody can pull, and `codeql`
+    # being skipped would skip this anyway. It starts working when the
+    # repository goes public, with nothing to remember.
+    if: ${{ github.event_name == 'push' && !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/ni-c/imap-mcp
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

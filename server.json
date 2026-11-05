@@ -1,0 +1,263 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ni-c/imap-mcp",
+  "title": "IMAP mailbox",
+  "description": "Read, search and organise any IMAP mailbox, with writes off by default",
+  "websiteUrl": "https://imap-mcp.ni-c.de",
+  "repository": {
+    "url": "https://github.com/ni-c/imap-mcp",
+    "source": "github"
+  },
+  "version": "0.4.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@ni-c/imap-mcp",
+      "version": "0.4.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "IMAP_HOST",
+          "description": "Hostname of the IMAP server, e.g. imap.example.net",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_USER",
+          "description": "Mailbox user name",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_PASSWORD",
+          "description": "Mailbox password or app password",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_PORT",
+          "description": "Defaults to 993 with implicit TLS, 143 otherwise",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_TLS",
+          "description": "implicit (default), starttls or none",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_MAILBOX",
+          "description": "Default mailbox to work in (default: INBOX)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_SEEN_KEYWORD",
+          "description": "IMAP keyword marking what the assistant has already seen (default: AiSeen)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_READ_ONLY",
+          "description": "Set to false to register the mailbox write tools; defaults to true",
+          "isRequired": false,
+          "format": "boolean"
+        },
+        {
+          "name": "IMAP_ALLOW_TOOLS",
+          "description": "Comma-separated tool names or list_* prefixes to register; 'essential' selects a curated preset (default: all tools)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_DENY_TOOLS",
+          "description": "Comma-separated tool names or list_* prefixes to remove from whatever IMAP_ALLOW_TOOLS left",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_DOWNLOAD_DIR",
+          "description": "Directory attachments may be written to; unset means the server never touches the filesystem",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_INSECURE_TLS",
+          "description": "Set to true to accept self-signed certificates, scoped to this connection",
+          "isRequired": false,
+          "format": "boolean"
+        },
+        {
+          "name": "IMAP_DRAFTS_MAILBOX",
+          "description": "Drafts folder to save into; by default the one flagged \\Drafts is used",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_MAX_MESSAGES",
+          "description": "Default number of messages a listing returns (default: 100)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_MAX_ATTACHMENT_BYTES",
+          "description": "Ceiling for returning an attachment inline (default: 1048576)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_MAX_DOWNLOAD_BYTES",
+          "description": "Ceiling for writing an attachment to disk (default: 26214400)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_MAX_EXTRACT_BYTES",
+          "description": "Ceiling for reading a document's text with mode=text (default: 10485760, maximum: 67108864)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_ATTACHMENT_TYPES",
+          "description": "Comma-separated content-type allowlist for attachments",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_TRUSTED_AUTHSERV_ID",
+          "description": "authserv-id your provider stamps into Authentication-Results; without it every verdict is reported as forgeable",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/ni-c/imap-mcp:0.4.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "IMAP_HOST",
+          "description": "Hostname of the IMAP server, e.g. imap.example.net",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_USER",
+          "description": "Mailbox user name",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_PASSWORD",
+          "description": "Mailbox password or app password",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_PORT",
+          "description": "Defaults to 993 with implicit TLS, 143 otherwise",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_TLS",
+          "description": "implicit (default), starttls or none",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_MAILBOX",
+          "description": "Default mailbox to work in (default: INBOX)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_SEEN_KEYWORD",
+          "description": "IMAP keyword marking what the assistant has already seen (default: AiSeen)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_READ_ONLY",
+          "description": "Set to false to register the mailbox write tools; defaults to true",
+          "isRequired": false,
+          "format": "boolean"
+        },
+        {
+          "name": "IMAP_ALLOW_TOOLS",
+          "description": "Comma-separated tool names or list_* prefixes to register; 'essential' selects a curated preset (default: all tools)",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_DENY_TOOLS",
+          "description": "Comma-separated tool names or list_* prefixes to remove from whatever IMAP_ALLOW_TOOLS left",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_DOWNLOAD_DIR",
+          "description": "Directory attachments may be written to; unset means the server never touches the filesystem",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_INSECURE_TLS",
+          "description": "Set to true to accept self-signed certificates, scoped to this connection",
+          "isRequired": false,
+          "format": "boolean"
+        },
+        {
+          "name": "IMAP_DRAFTS_MAILBOX",
+          "description": "Drafts folder to save into; by default the one flagged \\Drafts is used",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_MAX_MESSAGES",
+          "description": "Default number of messages a listing returns (default: 100)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_MAX_ATTACHMENT_BYTES",
+          "description": "Ceiling for returning an attachment inline (default: 1048576)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_MAX_DOWNLOAD_BYTES",
+          "description": "Ceiling for writing an attachment to disk (default: 26214400)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_MAX_EXTRACT_BYTES",
+          "description": "Ceiling for reading a document's text with mode=text (default: 10485760, maximum: 67108864)",
+          "isRequired": false,
+          "format": "number"
+        },
+        {
+          "name": "IMAP_ATTACHMENT_TYPES",
+          "description": "Comma-separated content-type allowlist for attachments",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "IMAP_TRUSTED_AUTHSERV_ID",
+          "description": "authserv-id your provider stamps into Authentication-Results; without it every verdict is reported as forgeable",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}

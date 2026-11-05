@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/ni-c/imap-mcp/discussions
+    about: Setup help, "how do I…", ideas that are not yet concrete features
+  - name: Security vulnerability
+    url: https://github.com/ni-c/imap-mcp/security/advisories/new
+    about: Please report vulnerabilities privately, never as a public issue
+  - name: Documentation
+    url: https://imap-mcp.ni-c.de
+    about: Guides, configuration and full tool reference

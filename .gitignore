@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+*.log
+.env
+.env.*
+!.env.example
+password
+config/password
+*.local
+.npmrc
+.DS_Store

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SOURCE FILE — the one place the architecture diagram is edited.
+
+  `npm run assets` turns this into four rendered copies, which are the files that
+  actually get shown:
+
+    docs/public/architecture-light.svg   GitHub in its light theme
+    docs/public/architecture-dark.svg    GitHub in its dark theme
+    docs/public/architecture.svg         npm, and anything that strips <picture>
+    docs/index.md                        inline, follows the VitePress theme toggle
+
+  Geometry and labels only: no colours, no <style>. Everything is expressed through
+  the class contract that docs/.vitepress/theme/custom.css defines — .node,
+  .node-accent, .edge, .edge-accent, .edge-dashed, .label-title, .label-mono,
+  .label-muted — and the generator supplies a matching palette per output. The
+  generator refuses a source that carries its own fill/stroke or a <style> block.
+
+  Below is the three-box shape most of these servers have. Keep the accented box for
+  the server itself; that is the one thing the reader should land on first. Replace
+  the labels, add rows inside the server box for what makes this one different
+  (tool counts, the approval gate, a read-only switch), and adjust the
+  viewBox height to match. Anything referenced by url(#id) needs an id unique enough
+  not to collide when the SVG is inlined into a page — prefix them, as below.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 268" role="img" aria-labelledby="arch-title arch-desc">
+  <title id="arch-title">How imap-mcp sits between an MCP client and a mailbox</title>
+  <desc id="arch-desc">An MCP client speaks stdio to imap-mcp, which connects to an IMAP server over TLS; message bodies come back fenced as untrusted content.</desc>
+
+  <defs>
+    <marker id="arch-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" />
+    </marker>
+    <marker id="arch-arrow-accent" class="accent" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" />
+    </marker>
+  </defs>
+
+  <rect class="node" x="20" y="70" width="160" height="80" rx="10" />
+  <text class="label-title" x="100" y="103" text-anchor="middle">MCP client</text>
+  <text class="label-muted" x="100" y="123" text-anchor="middle">Claude, Codex, …</text>
+
+  <rect class="node-accent" x="280" y="60" width="170" height="100" rx="10" />
+  <text class="label-title" x="365" y="95" text-anchor="middle">imap-mcp</text>
+  <text class="label-muted" x="365" y="115" text-anchor="middle">11 tools</text>
+  <text class="label-muted" x="365" y="133" text-anchor="middle">asks a person</text>
+
+  <rect class="node" x="550" y="70" width="150" height="80" rx="10" />
+  <text class="label-title" x="625" y="103" text-anchor="middle">IMAP</text>
+  <text class="label-muted" x="625" y="123" text-anchor="middle">any IMAP mailbox</text>
+
+  <path class="edge-accent" d="M180,110 L272,110" marker-end="url(#arch-arrow-accent)" />
+  <text class="label-mono" x="226" y="98" text-anchor="middle">stdio</text>
+
+  <path class="edge-accent" d="M450,110 L542,110" marker-end="url(#arch-arrow-accent)" />
+  <text class="label-mono" x="496" y="98" text-anchor="middle">IMAP</text>
+  <text class="label-muted" x="496" y="130" text-anchor="middle">TLS</text>
+
+  <path class="edge edge-dashed" d="M625,150 L625,196" marker-end="url(#arch-arrow)" />
+  <text class="label-muted" x="625" y="216" text-anchor="middle">This server never sends mail.</text>
+</svg>

@@ -1,0 +1,35 @@
+name: Feature request
+description: A tool or capability the server should have
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        One request is out of scope by design: **sending mail**. This server has access
+        to private data and exposure to untrusted content, and deliberately not a
+        channel to the outside world — see the security section of the README.
+        `save_draft` writes into your Drafts folder and you send from your own client.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation or workflow, not yet the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should the server be able to do?
+    validations:
+      required: true
+  - type: input
+    id: endpoint
+    attributes:
+      label: IMAP command or extension (if you know it)
+      description: >-
+        A link to the RFC or to your server's documentation makes this much faster —
+        e.g. RFC 3501 for the core protocol, RFC 5256 for SORT/THREAD.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you considered

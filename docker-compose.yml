@@ -1,0 +1,14 @@
+services:
+  ufsc-email-mcp:
+    build: .
+    image: ufsc-email-mcp:latest
+    container_name: ufsc-email-mcp
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8087}:8087"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=8087
+      - HOST=0.0.0.0

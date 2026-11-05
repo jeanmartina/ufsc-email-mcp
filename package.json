@@ -1,0 +1,77 @@
+{
+  "name": "ufsc-email-mcp",
+  "version": "0.5.1",
+  "mcpName": "io.github.ni-c/imap-mcp",
+  "description": "MCP server para e-mail institucional da UFSC (IMAP) com marcacao de leitura, movimentacao e suporte a Streamable HTTP",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "imap",
+    "email",
+    "mail",
+    "mailbox",
+    "read-only"
+  ],
+  "license": "MIT",
+  "author": "Willi Thiel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ni-c/imap-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ni-c/imap-mcp/issues"
+  },
+  "homepage": "https://imap-mcp.ni-c.de",
+  "funding": "https://github.com/sponsors/ni-c",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "imap-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build && npm test",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "tsc",
+    "typecheck": "tsc --project tsconfig.test.json",
+    "watch": "tsc --watch",
+    "lint": "oxlint --deny-warnings && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "start": "node dist/index.js",
+    "serve": "node http-server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "fflate": "^0.8.3",
+    "imapflow": "^1.7.6",
+    "mailparser": "^3.9.17",
+    "mcp-approval": "^0.8.2",
+    "mcp-tool-allowlist": "^0.2.1",
+    "unpdf": "^1.8.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^26.4.0",
+    "@vitest/coverage-v8": "5.0.0",
+    "fast-check": "^4.9.0",
+    "mcp-integration-harness": "^0.4.0",
+    "oxlint": "^1.80.0",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

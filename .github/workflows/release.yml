@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      # --ignore-scripts in both jobs. The publish job holds the OIDC token for
+      # npm Trusted Publishing while it installs, and nothing in this tree
+      # needs an install hook (`npm query ':attr(scripts,[postinstall])'` is
+      # empty) — so a hook that ran here could only be somebody else's.
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test:coverage
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # OIDC token for npm Trusted Publishing — no NPM_TOKEN secret involved.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # Node 24 ships npm >= 11.5.1, which Trusted Publishing requires.
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Check that the tag matches the package version
+        run: |
+          pkg="v$(node -p "require('./package.json').version")"
+          if [ "$pkg" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $pkg" >&2
+            exit 1
+          fi
+      # --ignore-scripts in both jobs. The publish job holds the OIDC token for
+      # npm Trusted Publishing while it installs, and nothing in this tree
+      # needs an install hook (`npm query ':attr(scripts,[postinstall])'` is
+      # empty) — so a hook that ran here could only be somebody else's.
+      - run: npm ci --ignore-scripts
+      # --provenance requires a PUBLIC repository. The package is scoped, so
+      # publishConfig.access must be "public" in package.json — there is no
+      # --access flag here, and npm reports a restricted publish as a 404.
+      - run: npm publish --provenance
+
+  mcp-registry:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for MCP registry OIDC authentication.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Sync version from package.json into server.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          # The registry rejects a 'version' field on OCI packages — their version
+          # lives in the identifier tag instead. Touch BOTH package entries.
+          jq --arg v "$version" \
+            '.version = $v
+             | (.packages[] | select(.registryType != "oci") | .version) = $v
+             | (.packages[] | select(.registryType == "oci")) |= (del(.version) | .identifier |= sub(":[^:]*$"; ":" + $v))' \
+            server.json > server.tmp && mv server.tmp server.json
+          jq -r '.packages[] | "\(.registryType) \(.identifier) \(.version // "-")"' server.json
+      # ci.yml pushes the image in a parallel run on the same tag, so the registry's
+      # ownership check would race it. Wait until GHCR actually serves the tag.
+      - name: Wait for the GHCR image tag
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          token="$(curl -fsS 'https://ghcr.io/token?scope=repository:ni-c/imap-mcp:pull&service=ghcr.io' | jq -r .token)"
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
+                -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' \
+                "https://ghcr.io/v2/ni-c/imap-mcp/manifests/$version"; then
+              echo "ghcr.io/ni-c/imap-mcp:$version is available"
+              exit 0
+            fi
+            echo "waiting for ghcr.io/ni-c/imap-mcp:$version ($i/60)"
+            sleep 30
+          done
+          echo "Image tag $version never appeared on GHCR — is ci.yml's publish job green?" >&2
+          exit 1
+      - name: Install mcp-publisher
+        # Pinned and checksum-verified. Everything else this repository pulls is
+        # SHA- or digest-pinned; a `releases/latest` binary piped straight into
+        # tar, then run with `id-token: write`, was the one exception.
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.1
+        run: |
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          base="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl -fsSL -o mcp-publisher.tar.gz "${base}/mcp-publisher_${os}_${arch}.tar.gz"
+          curl -fsSL -o checksums.txt "${base}/registry_${MCP_PUBLISHER_VERSION#v}_checksums.txt"
+          grep " mcp-publisher_${os}_${arch}.tar.gz\$" checksums.txt \
+            | sed "s| mcp-publisher_${os}_${arch}.tar.gz| mcp-publisher.tar.gz|" \
+            | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Extract release notes from CHANGELOG
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v ver="$version" \
+            '$0 ~ "^## \\[" ver "\\]" {flag=1; next} /^## \[/ {flag=0} flag' \
+            CHANGELOG.md > release-notes.md
+          if ! [ -s release-notes.md ]; then
+            echo "No CHANGELOG section found for $version" >&2
+            exit 1
+          fi
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md

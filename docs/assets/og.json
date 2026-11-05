@@ -1,0 +1,8 @@
+{
+  "$comment": "Copy for docs/public/og.png, the GitHub social preview and the OpenGraph card. Rendered by the svg-asset-set package. Tagline and badges are split by hand because the renderer does not wrap text. Optional \"title\" overrides the heading — use it for a scoped package, where package.json's name reads as @ni-c/thing but the card should say thing.",
+  "tagline": [
+    "Your mailbox, readable by an assistant",
+    "and treated as evidence, never as instructions"
+  ],
+  "badges": ["11 tools", "MIT", "Node ≥22"]
+}

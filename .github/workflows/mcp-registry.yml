@@ -1,0 +1,48 @@
+name: Publish to MCP Registry
+
+# Manual fallback: re-publish the version currently in package.json to the MCP
+# registry, e.g. after a failed registry job in a release run. Re-running that job
+# is NOT an option — it checks out the immutable tag, so a fix pushed to main would
+# never reach it. The npm package for this version must already be published.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-registry:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for MCP registry OIDC authentication.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Sync version from package.json into server.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          jq --arg v "$version" \
+            '.version = $v
+             | (.packages[] | select(.registryType != "oci") | .version) = $v
+             | (.packages[] | select(.registryType == "oci")) |= (del(.version) | .identifier |= sub(":[^:]*$"; ":" + $v))' \
+            server.json > server.tmp && mv server.tmp server.json
+          jq -r '.packages[] | "\(.registryType) \(.identifier) \(.version // "-")"' server.json
+      - name: Install mcp-publisher
+        # Pinned and checksum-verified. Everything else this repository pulls is
+        # SHA- or digest-pinned; a `releases/latest` binary piped straight into
+        # tar, then run with `id-token: write`, was the one exception.
+        env:
+          MCP_PUBLISHER_VERSION: v1.8.1
+        run: |
+          os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
+          base="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl -fsSL -o mcp-publisher.tar.gz "${base}/mcp-publisher_${os}_${arch}.tar.gz"
+          curl -fsSL -o checksums.txt "${base}/registry_${MCP_PUBLISHER_VERSION#v}_checksums.txt"
+          grep " mcp-publisher_${os}_${arch}.tar.gz\$" checksums.txt \
+            | sed "s| mcp-publisher_${os}_${arch}.tar.gz| mcp-publisher.tar.gz|" \
+            | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish

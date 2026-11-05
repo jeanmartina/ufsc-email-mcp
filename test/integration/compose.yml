@@ -1,0 +1,38 @@
+# Throwaway IMAP server for `npm run test:integration`.
+#
+# Not a managed stack: brought up, filled by test/integration/bootstrap.ts, and
+# destroyed afterwards. The suite calls every tool in the catalogue, expunging
+# deletes included, so nothing here may be a mailbox anybody reads.
+#
+# GreenMail keeps everything in memory and has no persistence at all, which is
+# exactly the property wanted here: stopping the container is the whole reset.
+#
+# Bound to 127.0.0.1 only. GreenMail accepts the credentials it was told to
+# create and nothing stops anyone else from using them.
+services:
+  greenmail:
+    # Overridable so the weekly CI run can point at :latest and report drift
+    # without changing what the PR gate tests.
+    image: ${GREENMAIL_IMAGE:-greenmail/standalone:2.1.13}
+    environment:
+      # `setup.test.all` starts SMTP, IMAP, POP3 and their TLS variants on the
+      # 3000-offset ports. The account is created at startup; GreenMail has no
+      # API for adding one afterwards, so the users list is the whole
+      # bootstrap and it has to live here.
+      # `greenmail.hostname=0.0.0.0` is not optional and the failure it
+      # prevents is silent: by default GreenMail binds every listener to
+      # 127.0.0.1 *inside the container*, so the published port maps to
+      # nothing and every tool eventually fails with "Unexpected close" after
+      # a connection timeout — which reads like a bug in the IMAP client.
+      # Binding to 0.0.0.0 inside a container namespace is not exposure; the
+      # `ports` list below is what decides who can reach it.
+      GREENMAIL_OPTS: >-
+        -Dgreenmail.setup.test.all
+        -Dgreenmail.hostname=0.0.0.0
+        -Dgreenmail.users=integration:integration-not-a-secret@example.net
+        -Dgreenmail.verbose
+    ports:
+      # IMAP, and SMTP for delivering the fixtures. There is no other way to
+      # put a message into GreenMail: it has no seeding and no import.
+      - '127.0.0.1:3143:3143'
+      - '127.0.0.1:3025:3025'

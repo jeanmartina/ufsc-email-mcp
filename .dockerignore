@@ -1,0 +1,14 @@
+# Not optional. Without it `docker build` can fail while merely READING the build
+# context if any file is root-owned 0600 — and it keeps secrets and state away
+# from the daemon.
+node_modules
+dist
+coverage
+test
+docs
+data
+.git
+.github
+.env
+*.log
+docker-compose*.yml

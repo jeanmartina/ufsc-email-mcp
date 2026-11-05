@@ -1,0 +1,52 @@
+name: Bug report
+description: Something behaves wrongly or breaks
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        This issue is public. Please do not paste real subjects, addresses or
+        mailbox names — replace them with placeholders before submitting.
+  - type: input
+    id: version
+    attributes:
+      label: 'imap-mcp version'
+      placeholder: '0.1.0 (npm version, docker tag or commit)'
+    validations:
+      required: true
+  - type: input
+    id: target
+    attributes:
+      label: IMAP server
+      description: Which server or provider, and its version if you know it (Dovecot 2.4, Gmail, Fastmail, Exchange, …).
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      placeholder: 'Claude Code, Claude Desktop, Codex, MCP Inspector, …'
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Read-only (the default)
+        - Writes enabled (IMAP_READ_ONLY=false)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Which tool you called, what you expected, what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: >-
+        Tool result or stderr. Please redact passwords, message contents, addresses,
+        internal hostnames and IPs — this issue is public.
+      render: text
