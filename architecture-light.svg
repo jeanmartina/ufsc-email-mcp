@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GENERATED FILE — do not edit by hand.
+  Source: docs/assets/architecture.source.svg
+  Regenerate with: npm run assets
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 268" width="720" height="268" role="img" aria-labelledby="arch-title arch-desc">
+  <title id="arch-title">How imap-mcp sits between an MCP client and a mailbox</title>
+  <desc id="arch-desc">An MCP client speaks stdio to imap-mcp, which connects to an IMAP server over TLS; message bodies come back fenced as untrusted content.</desc>
+
+  <style>
+    .node { stroke-width: 1.25; }
+    .node-accent { stroke-width: 1.5; }
+    .edge { stroke-width: 1.5; fill: none; }
+    .edge-accent { stroke-width: 1.75; fill: none; }
+    .edge-dashed { stroke-dasharray: 5 4; }
+    text { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "DejaVu Sans", sans-serif; font-size: 13px; }
+    .label-title { font-size: 13.5px; font-weight: 600; }
+    .label-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 12px; }
+    .label-muted { font-size: 11.5px; }
+
+    .node { fill: #f8fafc; stroke: #94a3b8; }
+    .node-accent { fill: rgba(99, 102, 241, 0.12); stroke: #4f46e5; }
+    .edge { stroke: #94a3b8; }
+    .edge-accent { stroke: #4f46e5; }
+    text { fill: #0f172a; }
+    .label-muted { fill: #475569; }
+    marker path { fill: #94a3b8; stroke: none; }
+    marker.accent path { fill: #4f46e5; }
+  </style>
+
+  <defs>
+    <marker id="arch-arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" />
+    </marker>
+    <marker id="arch-arrow-accent" class="accent" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 z" />
+    </marker>
+  </defs>
+
+  <rect class="node" x="20" y="70" width="160" height="80" rx="10" />
+  <text class="label-title" x="100" y="103" text-anchor="middle">MCP client</text>
+  <text class="label-muted" x="100" y="123" text-anchor="middle">Claude, Codex, …</text>
+
+  <rect class="node-accent" x="280" y="60" width="170" height="100" rx="10" />
+  <text class="label-title" x="365" y="95" text-anchor="middle">imap-mcp</text>
+  <text class="label-muted" x="365" y="115" text-anchor="middle">11 tools</text>
+  <text class="label-muted" x="365" y="133" text-anchor="middle">asks a person</text>
+
+  <rect class="node" x="550" y="70" width="150" height="80" rx="10" />
+  <text class="label-title" x="625" y="103" text-anchor="middle">IMAP</text>
+  <text class="label-muted" x="625" y="123" text-anchor="middle">any IMAP mailbox</text>
+
+  <path class="edge-accent" d="M180,110 L272,110" marker-end="url(#arch-arrow-accent)" />
+  <text class="label-mono" x="226" y="98" text-anchor="middle">stdio</text>
+
+  <path class="edge-accent" d="M450,110 L542,110" marker-end="url(#arch-arrow-accent)" />
+  <text class="label-mono" x="496" y="98" text-anchor="middle">IMAP</text>
+  <text class="label-muted" x="496" y="130" text-anchor="middle">TLS</text>
+
+  <path class="edge edge-dashed" d="M625,150 L625,196" marker-end="url(#arch-arrow)" />
+  <text class="label-muted" x="625" y="216" text-anchor="middle">This server never sends mail.</text>
+</svg>
