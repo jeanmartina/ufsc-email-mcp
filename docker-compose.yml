@@ -5,7 +5,7 @@ services:
     container_name: ufsc-email-mcp
     restart: unless-stopped
     ports:
-      - "${PORT:-8087}:8087"
+      - '${PORT:-8087}:8087'
     env_file:
       - .env
     environment:

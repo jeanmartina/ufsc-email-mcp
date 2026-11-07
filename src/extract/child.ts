@@ -42,7 +42,9 @@ async function run(request: ExtractRequest): Promise<ExtractResponse> {
     const { extractPdf } = (await import(
       sibling('./pdf')
     )) as typeof import('./pdf.js');
-    return extractPdf(request.bytes, request.maxChars);
+    return extractPdf(request.bytes, request.maxChars, {
+      includePageMarkers: request.includePageMarkers,
+    });
   }
   const [{ extractZipDocument }, { htmlToText }] = await Promise.all([
     import(sibling('./ooxml')) as Promise<typeof import('./ooxml.js')>,

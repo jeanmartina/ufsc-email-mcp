@@ -275,6 +275,16 @@ describe('sniffContent', () => {
 
   it.each([
     ['PDF', Buffer.from('%PDF-1.7\n'), 'application/pdf'],
+    [
+      'PDF after leading whitespace',
+      Buffer.from('\n\n%PDF-1.3\n'),
+      'application/pdf',
+    ],
+    [
+      'PDF after UTF-8 BOM + whitespace',
+      Buffer.from('\uFEFF\r\n%PDF-1.4\n'),
+      'application/pdf',
+    ],
     ['PNG', Buffer.from([0x89, 0x50, 0x4e, 0x47]), 'image/png'],
     ['JPEG', Buffer.from([0xff, 0xd8, 0xff, 0xe0]), 'image/jpeg'],
     ['GIF', Buffer.from('GIF89a'), 'image/gif'],

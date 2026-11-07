@@ -84,7 +84,14 @@ describe('loadConfig', () => {
     // rest of the family, and deliberately so: this reaches a mailbox.
     expect(config.readOnly).toBe(true);
     expect(config.imap.downloadDir).toBeUndefined();
-    expect(config.imap.maxExtractBytes).toBe(10 * 1024 * 1024);
+    expect(config.imap.maxDownloadBytes).toBe(32 * 1024 * 1024);
+    expect(config.imap.maxExtractBytes).toBe(32 * 1024 * 1024);
+    expect(config.imap.maxArchiveBytes).toBe(32 * 1024 * 1024);
+    expect(config.imap.maxArchiveTotalBytes).toBe(128 * 1024 * 1024);
+    expect(config.imap.maxArchiveEntryBytes).toBe(32 * 1024 * 1024);
+    expect(config.imap.maxArchiveEntries).toBe(500);
+    expect(config.imap.maxCompressionRatio).toBe(200);
+    expect(config.imap.tempTtlSeconds).toBe(1800);
   });
 
   it('removes the password from the environment', () => {

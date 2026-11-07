@@ -42,6 +42,8 @@ export interface ExtractRequest {
   bytes: Uint8Array;
   /** Hard cap on the characters the worker may return. */
   maxChars: number;
+  /** When true, prefixes each PDF page carrying text with `== Page N ==`. */
+  includePageMarkers?: boolean | undefined;
 }
 
 export interface ExtractOk {

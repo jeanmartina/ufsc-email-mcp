@@ -6,6 +6,7 @@ import { ALL_TOOLS, ESSENTIAL_TOOLS, READ_TOOLS } from './tools/catalogue.js';
 
 import type { Config } from './config.js';
 import { ConfirmationStore, createApproval } from 'mcp-approval';
+import type { ChildLimits } from './extract/index.js';
 import { ImapClient, type ImapClientFactory } from './imap.js';
 import { registerAttachmentResources } from './resources.js';
 import { registerReadTools } from './tools/read.js';
@@ -35,6 +36,7 @@ function packageVersion(): string {
 /** Seam the unit tests use to run the whole server without a mail server. */
 export interface ServerDeps {
   imapFactory?: ImapClientFactory;
+  extractLimits?: ChildLimits;
 }
 
 export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
@@ -103,7 +105,7 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
   // Wraps server.registerTool, so it has to sit before the first register call.
   installToolFilter(server, filter);
 
-  registerReadTools(server, client, config);
+  registerReadTools(server, client, config, deps.extractLimits);
   // The attachment resources are the same door as get_attachments, so the
   // filter has to close both. It used to cover tools only, which meant
   // IMAP_DENY_TOOLS=get_attachments removed the tool from tools/list and left

@@ -9,6 +9,7 @@ import type { CallToolResult } from '@modelcontextprotocol/client';
 
 import type { Config } from '../src/config.js';
 import { DEFAULT_ATTACHMENT_TYPES } from '../src/config.js';
+import type { ChildLimits } from '../src/extract/index.js';
 import { createServer } from '../src/server.js';
 import { FakeImap, message, type FakeMailbox } from './fake-imap.js';
 
@@ -29,8 +30,14 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
       maxAttachmentBytes: 1024 * 1024,
       allowedAttachmentTypes: DEFAULT_ATTACHMENT_TYPES,
       downloadDir: undefined,
-      maxDownloadBytes: 25 * 1024 * 1024,
-      maxExtractBytes: 10 * 1024 * 1024,
+      maxDownloadBytes: 32 * 1024 * 1024,
+      maxExtractBytes: 32 * 1024 * 1024,
+      maxArchiveBytes: 32 * 1024 * 1024,
+      maxArchiveTotalBytes: 128 * 1024 * 1024,
+      maxArchiveEntryBytes: 32 * 1024 * 1024,
+      maxArchiveEntries: 500,
+      maxCompressionRatio: 200,
+      tempTtlSeconds: 1800,
       ...overrides.imap,
     },
     // Mirrors the real default: read-only unless the test says otherwise.
@@ -39,6 +46,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     elicitation: overrides.elicitation ?? true,
     allowTools: overrides.allowTools,
     denyTools: overrides.denyTools,
+    publicBaseUrl: overrides.publicBaseUrl,
   };
 }
 
@@ -83,13 +91,19 @@ export async function connect(
     mailboxes?: FakeMailbox[];
     /** Omitted means the client does not support elicitation at all. */
     elicit?: ElicitBehaviour;
+    extractLimits?: ChildLimits;
   } = {}
 ): Promise<Harness> {
   const imap = new FakeImap(options.mailboxes ?? defaultMailboxes());
   const config = testConfig(options.config ?? {});
   const prompts: string[] = [];
 
-  const server = createServer(config, { imapFactory: () => imap });
+  const server = createServer(config, {
+    imapFactory: () => imap,
+    ...(options.extractLimits !== undefined
+      ? { extractLimits: options.extractLimits }
+      : {}),
+  });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
 

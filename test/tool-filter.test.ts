@@ -100,7 +100,7 @@ describe('selecting tools', () => {
   it('subtracts the deny list from the allow list', async () => {
     expect(
       await names({ allowTools: 'list_*', denyTools: 'list_new_messages' })
-    ).toEqual(['list_mailboxes', 'list_messages']);
+    ).toEqual(['list_archive_entries', 'list_mailboxes', 'list_messages']);
   });
 
   it('selects the curated set for "essential"', async () => {

@@ -124,6 +124,64 @@ export const EXECUTABLE_EXTENSIONS = new Set([
 const DOUBLE_EXTENSION_BAIT =
   /\.(pdf|docx?|xlsx?|pptx?|txt|csv|jpe?g|png|gif|zip|rtf|odt|ods)\.[a-z0-9]{1,5}$/i;
 
+/** Declared MIME types that legitimately identify a ZIP archive. */
+export const ZIP_MIME_TYPES = new Set([
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/x-zip',
+  'multipart/x-zip',
+]);
+
+export function isZipMimeType(contentType: string): boolean {
+  return ZIP_MIME_TYPES.has(contentType.toLowerCase());
+}
+
+export function hasDoubleExtensionBait(filename: string): boolean {
+  return DOUBLE_EXTENSION_BAIT.test(filename);
+}
+
+const EXTENSION_MIME_MAP = new Map<string, string>([
+  ['pdf', 'application/pdf'],
+  [
+    'docx',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ],
+  ['xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+  [
+    'pptx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ],
+  ['odt', 'application/vnd.oasis.opendocument.text'],
+  ['ods', 'application/vnd.oasis.opendocument.spreadsheet'],
+  ['txt', 'text/plain'],
+  ['md', 'text/plain'],
+  ['markdown', 'text/plain'],
+  ['log', 'text/plain'],
+  ['csv', 'text/csv'],
+  ['tsv', 'text/tab-separated-values'],
+  ['html', 'text/html'],
+  ['htm', 'text/html'],
+  ['xhtml', 'text/html'],
+  ['json', 'application/json'],
+  ['xml', 'application/xml'],
+  ['rtf', 'application/rtf'],
+  ['ics', 'text/calendar'],
+  ['png', 'image/png'],
+  ['jpg', 'image/jpeg'],
+  ['jpeg', 'image/jpeg'],
+  ['gif', 'image/gif'],
+  ['webp', 'image/webp'],
+  ['zip', 'application/zip'],
+]);
+
+/** Infers a conservative media type from a lowercase extension, or octet-stream. */
+export function inferMimeFromExtension(extension: string): string {
+  return (
+    EXTENSION_MIME_MAP.get(extension.toLowerCase()) ??
+    'application/octet-stream'
+  );
+}
+
 /**
  * The shape of a media type — RFC 6838's token characters, bounded on both
  * sides of the slash.
@@ -388,7 +446,7 @@ export function sniffContent(buffer: Buffer): ContentVerdict {
   const starts = (signature: number[]): boolean =>
     signature.every((value, index) => byte(index) === value);
 
-  if (starts([0x25, 0x50, 0x44, 0x46])) {
+  if (startsWithPdfHeader(buffer)) {
     return { executable: false, detectedType: 'application/pdf' };
   }
   if (starts([0x89, 0x50, 0x4e, 0x47])) {
@@ -409,9 +467,48 @@ export function sniffContent(buffer: Buffer): ContentVerdict {
   ) {
     return { executable: false, detectedType: 'image/webp' };
   }
-  if (starts([0x50, 0x4b, 0x03, 0x04])) {
-    // Also every modern Office and OpenDocument file.
+  if (
+    starts([0x50, 0x4b, 0x03, 0x04]) ||
+    starts([0x50, 0x4b, 0x05, 0x06]) ||
+    starts([0x50, 0x4b, 0x07, 0x08])
+  ) {
+    // Standard, empty, or spanned PKZIP — also every modern Office and OpenDocument file.
     return { executable: false, detectedType: 'application/zip' };
   }
   return { executable: false, detectedType: undefined };
+}
+
+/**
+ * ISO 32000-1 permits `%PDF-` within the first 1024 bytes, and real-world PHP
+ * exam/government portals frequently emit leading newlines or a UTF-8 BOM
+ * before `%PDF-`. Only ASCII whitespace (`\t`, `\n`, `\f`, `\r`, ` `) and an
+ * optional leading UTF-8 BOM are skipped so polyglot headers (`MZ`, `<html>`,
+ * `#!/`) before `%PDF-` are never mistaken for a clean PDF.
+ */
+function startsWithPdfHeader(buffer: Buffer): boolean {
+  const limit = Math.min(buffer.length, 1024);
+  let i = 0;
+  if (
+    limit >= 3 &&
+    buffer[0] === 0xef &&
+    buffer[1] === 0xbb &&
+    buffer[2] === 0xbf
+  ) {
+    i = 3;
+  }
+  while (i < limit) {
+    const b = buffer[i] as number;
+    if (b === 0x09 || b === 0x0a || b === 0x0c || b === 0x0d || b === 0x20) {
+      i += 1;
+      continue;
+    }
+    break;
+  }
+  return (
+    i + 4 <= limit &&
+    buffer[i] === 0x25 &&
+    buffer[i + 1] === 0x50 &&
+    buffer[i + 2] === 0x44 &&
+    buffer[i + 3] === 0x46
+  );
 }

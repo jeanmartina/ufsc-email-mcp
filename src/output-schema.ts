@@ -90,5 +90,34 @@ export const attachmentEntry = z
       .describe(
         'True when get_attachments with mode "text" can read this part as text.'
       ),
+    archive: z
+      .boolean()
+      .optional()
+      .describe(
+        'True when list_archive_entries and read_archive_entry can inspect this ZIP attachment.'
+      ),
   })
   .meta({ additionalProperties: true });
+
+/** One entry inside a ZIP archive, as `list_archive_entries` projects it. */
+export const archiveEntrySchema = z.object({
+  name: z.string(),
+  entry_path: z
+    .string()
+    .describe(
+      'Normalized relative path inside the archive; pass verbatim to read_archive_entry.'
+    ),
+  extension: z.string(),
+  mime_type: z.string(),
+  compressed_bytes: z.number().int(),
+  uncompressed_bytes: z.number().int(),
+  compression_ratio: z.number(),
+  encrypted: z.boolean(),
+  is_symlink: z.boolean(),
+  executable: z.boolean(),
+  extractable: z.boolean(),
+  readable_as_text: z.boolean(),
+  allowed: z.boolean(),
+  error_code: z.string().optional(),
+  notes: z.array(z.string()),
+});

@@ -12,14 +12,16 @@ Beyond that, `IMAP_ALLOW_TOOLS` and `IMAP_DENY_TOOLS` narrow the list further, a
 
 Registered always.
 
-| Tool                | Description                                                                                              |
-| ------------------- | -------------------------------------------------------------------------------------------------------- |
-| `list_mailboxes`    | The folder tree, with the special-use flags the server reports (`\Drafts`, `\Sent`, …). **essential**     |
-| `list_new_messages` | What the assistant has not seen yet, tracked with its own IMAP keyword rather than `\Seen`. **essential** |
-| `list_messages`     | Search and list a mailbox: by sender, subject, date range, flags. **essential**                           |
-| `get_message`       | One message, body fenced as untrusted content. **essential**                                             |
-| `get_attachments`   | Attachment metadata, small ones inline, and the text of a PDF or Office file with `mode: "text"`         |
-| `get_server_info`   | Capabilities, the mailbox in use, and whether the write tools are registered                             |
+| Tool                   | Description                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| `list_mailboxes`       | The folder tree, with the special-use flags the server reports (`\Drafts`, `\Sent`, …). **essential**     |
+| `list_new_messages`    | What the assistant has not seen yet, tracked with its own IMAP keyword rather than `\Seen`. **essential** |
+| `list_messages`        | Search and list a mailbox: by sender, subject, date range, flags. **essential**                           |
+| `get_message`          | One message, body fenced as untrusted content. **essential**                                             |
+| `get_attachments`      | Attachment metadata, small ones inline, controlled downloads, and document text with `mode: "text"`      |
+| `list_archive_entries` | Inspect files inside a ZIP attachment with magic-byte and ZIP-bomb checks                                |
+| `read_archive_entry`   | Extract paginated text (with PDF page markers) or materialize a file from inside a ZIP attachment        |
+| `get_server_info`      | Capabilities, the mailbox in use, and whether the write tools are registered                             |
 
 ## Write tools
 

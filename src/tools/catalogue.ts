@@ -31,9 +31,11 @@ export const READ_TOOLS = [
   'get_attachments',
   'get_message',
   'get_server_info',
+  'list_archive_entries',
   'list_mailboxes',
   'list_messages',
   'list_new_messages',
+  'read_archive_entry',
 ] as const;
 
 /** Registered only when `IMAP_READ_ONLY` is turned off. */

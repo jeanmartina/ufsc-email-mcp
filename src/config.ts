@@ -58,6 +58,20 @@ export interface ImapConfig {
    * terminated, which is a memory question and neither of the other two.
    */
   maxExtractBytes: number;
+  /** Maximum compressed size of a ZIP archive attachment (IMAP_MAX_ARCHIVE_BYTES). */
+  maxArchiveBytes?: number | undefined;
+  /** Maximum total uncompressed bytes across all entries in a ZIP (IMAP_MAX_ARCHIVE_TOTAL_BYTES). */
+  maxArchiveTotalBytes?: number | undefined;
+  /** Maximum uncompressed bytes of a single entry extracted from a ZIP (IMAP_MAX_ARCHIVE_ENTRY_BYTES). */
+  maxArchiveEntryBytes?: number | undefined;
+  /** Maximum number of entries allowed inside a ZIP archive (IMAP_MAX_ARCHIVE_ENTRIES). */
+  maxArchiveEntries?: number | undefined;
+  /** Maximum compression ratio (uncompressed / compressed) before flagging a ZIP bomb (IMAP_MAX_COMPRESSION_RATIO). */
+  maxCompressionRatio?: number | undefined;
+  /** Lifetime in seconds of controlled temporary files materialized for download/analysis (IMAP_TEMP_TTL_SECONDS). */
+  tempTtlSeconds?: number | undefined;
+  /** Optional base directory for isolated temporary files (IMAP_TEMP_DIR). */
+  tempDir?: string | undefined;
 }
 
 export interface Config {
@@ -90,6 +104,8 @@ export interface Config {
   allowTools: string | undefined;
   /** Raw value of `IMAP_DENY_TOOLS`, same shape, subtracted from the above. */
   denyTools: string | undefined;
+  /** Optional public HTTP base URL (PUBLIC_BASE_URL) for capability download URLs. */
+  publicBaseUrl?: string | undefined;
 }
 
 export const DEFAULT_ATTACHMENT_TYPES = [
@@ -97,6 +113,9 @@ export const DEFAULT_ATTACHMENT_TYPES = [
   'application/json',
   'application/xml',
   'application/zip',
+  'application/x-zip-compressed',
+  'application/x-zip',
+  'multipart/x-zip',
   'application/rtf',
   'application/vnd.oasis.opendocument.text',
   'application/vnd.oasis.opendocument.spreadsheet',
@@ -116,10 +135,10 @@ export const DEFAULT_ATTACHMENT_TYPES = [
 const DEFAULT_MAX_MESSAGES = 100;
 /** Inline cap: this one protects the model's context window. */
 const DEFAULT_MAX_ATTACHMENT_BYTES = 1024 * 1024;
-/** Disk cap: this one protects the filesystem, which is a different concern. */
-const DEFAULT_MAX_DOWNLOAD_BYTES = 25 * 1024 * 1024;
-/** Extraction cap: how much hostile input one parser is asked to chew on. */
-const DEFAULT_MAX_EXTRACT_BYTES = 10 * 1024 * 1024;
+/** Disk / controlled staging cap: accepts attachments >= 25 MB out of the box (32 MiB). */
+export const DEFAULT_MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024;
+/** Extraction cap: how much hostile input one parser is asked to chew on (32 MiB, >= 25 MB). */
+export const DEFAULT_MAX_EXTRACT_BYTES = 32 * 1024 * 1024;
 /**
  * Hard ceiling on `IMAP_MAX_EXTRACT_BYTES`.
  *
@@ -130,6 +149,24 @@ const DEFAULT_MAX_EXTRACT_BYTES = 10 * 1024 * 1024;
  * there is a limit. 64 MiB is past any document that arrives by mail.
  */
 const MAX_MAX_EXTRACT_BYTES = 64 * 1024 * 1024;
+
+export const DEFAULT_MAX_ARCHIVE_BYTES = 32 * 1024 * 1024;
+const MAX_MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
+
+export const DEFAULT_MAX_ARCHIVE_TOTAL_BYTES = 128 * 1024 * 1024;
+const MAX_MAX_ARCHIVE_TOTAL_BYTES = 512 * 1024 * 1024;
+
+export const DEFAULT_MAX_ARCHIVE_ENTRY_BYTES = 32 * 1024 * 1024;
+const MAX_MAX_ARCHIVE_ENTRY_BYTES = 64 * 1024 * 1024;
+
+export const DEFAULT_MAX_ARCHIVE_ENTRIES = 500;
+const MAX_MAX_ARCHIVE_ENTRIES = 5_000;
+
+export const DEFAULT_MAX_COMPRESSION_RATIO = 200;
+const MAX_MAX_COMPRESSION_RATIO = 10_000;
+
+export const DEFAULT_TEMP_TTL_SECONDS = 1800;
+const MAX_TEMP_TTL_SECONDS = 86_400;
 const DEFAULT_SEEN_KEYWORD = 'AiSeen';
 /** A hostname is at most 253 characters; an IPv6 literal far fewer. */
 const MAX_HOST_LENGTH = 253;
@@ -247,12 +284,50 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         'IMAP_MAX_EXTRACT_BYTES',
         MAX_MAX_EXTRACT_BYTES
       ),
+      maxArchiveBytes: parseCount(
+        env.IMAP_MAX_ARCHIVE_BYTES,
+        DEFAULT_MAX_ARCHIVE_BYTES,
+        'IMAP_MAX_ARCHIVE_BYTES',
+        MAX_MAX_ARCHIVE_BYTES
+      ),
+      maxArchiveTotalBytes: parseCount(
+        env.IMAP_MAX_ARCHIVE_TOTAL_BYTES,
+        DEFAULT_MAX_ARCHIVE_TOTAL_BYTES,
+        'IMAP_MAX_ARCHIVE_TOTAL_BYTES',
+        MAX_MAX_ARCHIVE_TOTAL_BYTES
+      ),
+      maxArchiveEntryBytes: parseCount(
+        env.IMAP_MAX_ARCHIVE_ENTRY_BYTES,
+        DEFAULT_MAX_ARCHIVE_ENTRY_BYTES,
+        'IMAP_MAX_ARCHIVE_ENTRY_BYTES',
+        MAX_MAX_ARCHIVE_ENTRY_BYTES
+      ),
+      maxArchiveEntries: parseCount(
+        env.IMAP_MAX_ARCHIVE_ENTRIES,
+        DEFAULT_MAX_ARCHIVE_ENTRIES,
+        'IMAP_MAX_ARCHIVE_ENTRIES',
+        MAX_MAX_ARCHIVE_ENTRIES
+      ),
+      maxCompressionRatio: parseCount(
+        env.IMAP_MAX_COMPRESSION_RATIO,
+        DEFAULT_MAX_COMPRESSION_RATIO,
+        'IMAP_MAX_COMPRESSION_RATIO',
+        MAX_MAX_COMPRESSION_RATIO
+      ),
+      tempTtlSeconds: parseCount(
+        env.IMAP_TEMP_TTL_SECONDS,
+        DEFAULT_TEMP_TTL_SECONDS,
+        'IMAP_TEMP_TTL_SECONDS',
+        MAX_TEMP_TTL_SECONDS
+      ),
+      tempDir: parseOptionalDir(env.IMAP_TEMP_DIR, 'IMAP_TEMP_DIR'),
     },
     // Defaults to true, unlike the rest of the family — see the field comment.
     readOnly: env.IMAP_READ_ONLY !== 'false',
     elicitation,
     allowTools: env.IMAP_ALLOW_TOOLS,
     denyTools: env.IMAP_DENY_TOOLS,
+    publicBaseUrl: parsePublicBaseUrl(env.PUBLIC_BASE_URL),
   };
 
   // Silently ignoring a removed security variable is the worst of the options:
@@ -426,6 +501,13 @@ function parseTypes(raw: string | undefined): string[] {
  * message says how long it was, not what it said.
  */
 function parseDownloadDir(raw: string | undefined): string | undefined {
+  return parseOptionalDir(raw, 'IMAP_DOWNLOAD_DIR');
+}
+
+function parseOptionalDir(
+  raw: string | undefined,
+  name: string
+): string | undefined {
   if (raw === undefined) return undefined;
   const trimmed = raw.trim();
   if (trimmed === '') return undefined;
@@ -435,13 +517,31 @@ function parseDownloadDir(raw: string | undefined): string | undefined {
     if (!statSync(resolved).isDirectory()) throw new Error('not a directory');
   } catch {
     console.error(
-      'imap-mcp: IMAP_DOWNLOAD_DIR must name an existing directory ' +
+      `imap-mcp: ${name} must name an existing directory ` +
         `(got ${describeValue(trimmed)} that does not resolve to one). ` +
         'Create it first, or unset the variable to keep this server off the filesystem.'
     );
     process.exit(1);
   }
   return resolved;
+}
+
+function parsePublicBaseUrl(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined;
+  const trimmed = raw.trim();
+  if (trimmed === '') return undefined;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('bad scheme');
+    }
+    return trimmed.replace(/\/+$/, '');
+  } catch {
+    console.error(
+      `imap-mcp: PUBLIC_BASE_URL must be an http:// or https:// URL (got ${describeValue(trimmed)})`
+    );
+    process.exit(1);
+  }
 }
 
 /**

@@ -8,33 +8,33 @@ Permite que assistentes de Inteligência Artificial (ChatGPT, Claude Desktop, Cu
 
 ## ✨ Funcionalidades
 
-* **Busca e Leitura de Mensagens:**
-  * `list_messages`: Lista mensagens de qualquer pasta (`INBOX`, `SPAM`, subpastas personalizadas) com suporte a filtros e paginação.
-  * `get_message`: Recupera o conteúdo completo do e-mail (texto puro, formatação e metadados).
-  * `download_attachment`: Baixa e extrai texto de anexos (incluindo processamento seguro de PDFs e documentos DOCX).
-* **Organização e Marcação de Mensagens:**
-  * `mark_messages_read`: Marca mensagens como lidas (`seen: true`) ou não lidas (`seen: false`) via comandos IMAP `\Seen` de forma idempotente e segura por UID.
-  * `move_messages`: Move mensagens individualmente ou em lote entre pastas, com o parâmetro opcional `mark_as_read: true` para marcar como lida e arquivar na mesma operação.
-  * `save_draft`: Cria rascunhos de e-mails diretamente no servidor.
-* **Dois Modos de Transporte MCP:**
-  * **Stdio (Local):** Para clientes desktop (Claude Desktop, Cursor, VS Code, Orca local).
-  * **Streamable HTTP / SSE (Remoto):** Servidor HTTP protegido por **Bearer Token** (`MCP_AUTH_TOKEN`) para conexão direta com ChatGPT, n8n, Traefik, Docker e integrações em nuvem.
-* **Segurança e Conformidade:**
-  * Utiliza estritamente **UIDs IMAP** para evitar inconsistências de sequência.
-  * Suporte a carregamento de credenciais por variáveis de ambiente ou arquivos de segredo (`/config/password`).
-  * Modo somente-leitura opcional (`IMAP_READ_ONLY=true`).
+- **Busca e Leitura de Mensagens:**
+  - `list_messages`: Lista mensagens de qualquer pasta (`INBOX`, `SPAM`, subpastas personalizadas) com suporte a filtros e paginação.
+  - `get_message`: Recupera o conteúdo completo do e-mail (texto puro, formatação e metadados).
+  - `download_attachment`: Baixa e extrai texto de anexos (incluindo processamento seguro de PDFs e documentos DOCX).
+- **Organização e Marcação de Mensagens:**
+  - `mark_messages_read`: Marca mensagens como lidas (`seen: true`) ou não lidas (`seen: false`) via comandos IMAP `\Seen` de forma idempotente e segura por UID.
+  - `move_messages`: Move mensagens individualmente ou em lote entre pastas, com o parâmetro opcional `mark_as_read: true` para marcar como lida e arquivar na mesma operação.
+  - `save_draft`: Cria rascunhos de e-mails diretamente no servidor.
+- **Dois Modos de Transporte MCP:**
+  - **Stdio (Local):** Para clientes desktop (Claude Desktop, Cursor, VS Code, Orca local).
+  - **Streamable HTTP / SSE (Remoto):** Servidor HTTP protegido por **Bearer Token** (`MCP_AUTH_TOKEN`) para conexão direta com ChatGPT, n8n, Traefik, Docker e integrações em nuvem.
+- **Segurança e Conformidade:**
+  - Utiliza estritamente **UIDs IMAP** para evitar inconsistências de sequência.
+  - Suporte a carregamento de credenciais por variáveis de ambiente ou arquivos de segredo (`/config/password`).
+  - Modo somente-leitura opcional (`IMAP_READ_ONLY=true`).
 
 ---
 
 ## ⚙️ Parâmetros do E-mail da UFSC
 
-| Parâmetro | Valor Recomendado | Observações |
-| :--- | :--- | :--- |
-| **Servidor IMAP** | `imap.ufsc.br` | Servidor oficial da SETIC/UFSC |
-| **Porta** | `993` | Porta segura padrão IMAP |
-| **Segurança** | `SSL/TLS` (`IMAP_TLS=true`) | Obrigatório para comunicação criptografada |
-| **Usuário** | `seu.usuario@ufsc.br` | Seu e-mail institucional ou identificador IdUFSC |
-| **Senha** | `sua-senha-idufsc` | Senha de acesso ao IdUFSC |
+| Parâmetro         | Valor Recomendado           | Observações                                      |
+| :---------------- | :-------------------------- | :----------------------------------------------- |
+| **Servidor IMAP** | `imap.ufsc.br`              | Servidor oficial da SETIC/UFSC                   |
+| **Porta**         | `993`                       | Porta segura padrão IMAP                         |
+| **Segurança**     | `SSL/TLS` (`IMAP_TLS=true`) | Obrigatório para comunicação criptografada       |
+| **Usuário**       | `seu.usuario@ufsc.br`       | Seu e-mail institucional ou identificador IdUFSC |
+| **Senha**         | `sua-senha-idufsc`          | Senha de acesso ao IdUFSC                        |
 
 ---
 
@@ -103,8 +103,9 @@ npm run serve
 ```
 
 O endpoint HTTP estará disponível em:
-* `http://localhost:8087/` (ou `/mcp`)
-* Cabeçalho de autorização: `Authorization: Bearer <SEU_MCP_AUTH_TOKEN>`
+
+- `http://localhost:8087/` (ou `/mcp`)
+- Cabeçalho de autorização: `Authorization: Bearer <SEU_MCP_AUTH_TOKEN>`
 
 ### Opção 3: Modo Stdio no Claude Desktop
 
@@ -144,6 +145,7 @@ Para conectar este MCP ao ChatGPT (via Custom GPT ou interface com suporte a MCP
 ## 🛠️ Ferramentas MCP Disponíveis (Tools Reference)
 
 ### 1. `mark_messages_read`
+
 Marca uma ou mais mensagens como lidas ou não lidas na pasta informada.
 
 ```json
@@ -155,6 +157,7 @@ Marca uma ou mais mensagens como lidas ou não lidas na pasta informada.
 ```
 
 ### 2. `move_messages`
+
 Move mensagens para uma pasta de destino, opcionalmente marcando-as como lidas.
 
 ```json
@@ -167,6 +170,7 @@ Move mensagens para uma pasta de destino, opcionalmente marcando-as como lidas.
 ```
 
 ### 3. `list_messages`
+
 Lista os e-mails com metadados e status de leitura.
 
 ```json
@@ -177,6 +181,7 @@ Lista os e-mails com metadados e status de leitura.
 ```
 
 ### 4. `get_message`
+
 Lê o conteúdo completo de um e-mail através do seu UID.
 
 ```json
@@ -187,6 +192,7 @@ Lê o conteúdo completo de um e-mail através do seu UID.
 ```
 
 ### 5. `save_draft`
+
 Cria um novo rascunho de e-mail na pasta de rascunhos.
 
 ```json
@@ -196,6 +202,14 @@ Cria um novo rascunho de e-mail na pasta de rascunhos.
   "body": "Prezados,\n\nSegue parecer..."
 }
 ```
+
+### 6. `list_archive_entries` e `read_archive_entry`
+
+Inspeciona com segurança arquivos `.zip` anexados (até `IMAP_MAX_ARCHIVE_BYTES`, padrão 32 MiB) e extrai texto paginado de PDFs (com rastreabilidade `== Page N ==`), DOCX, XLSX, PPTX, ODT, ODS, TXT, CSV, HTML, JSON, XML e RTF, ou materializa o arquivo original em diretório temporário isolado (`mode: "download"`).
+
+### Choosing which tools load
+
+Use `IMAP_ALLOW_TOOLS` and `IMAP_DENY_TOOLS` (see [Choosing which tools load](#choosing-which-tools-load)) to restrict exposed MCP tools in production deployments.
 
 ---
 

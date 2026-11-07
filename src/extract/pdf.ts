@@ -83,7 +83,55 @@ const PDFJS_OPTIONS = {
  */
 export async function extractPdf(
   bytes: Uint8Array,
-  maxChars: number
+  maxChars: number,
+  options?: { includePageMarkers?: boolean | undefined }
+): Promise<ExtractResponse> {
+  const first = await extractPdfOnce(bytes, maxChars, options);
+  if (!first.ok && first.reason === 'corrupt') {
+    const trimmed = leadingPdfWhitespaceOffset(bytes);
+    if (trimmed > 0) {
+      return extractPdfOnce(bytes.slice(trimmed), maxChars, options);
+    }
+  }
+  return first;
+}
+
+function leadingPdfWhitespaceOffset(bytes: Uint8Array): number {
+  const limit = Math.min(bytes.byteLength, 1024);
+  let i = 0;
+  if (
+    limit >= 3 &&
+    bytes[0] === 0xef &&
+    bytes[1] === 0xbb &&
+    bytes[2] === 0xbf
+  ) {
+    i = 3;
+  }
+  while (i < limit) {
+    const b = bytes[i] as number;
+    if (b === 0x09 || b === 0x0a || b === 0x0c || b === 0x0d || b === 0x20) {
+      i += 1;
+      continue;
+    }
+    break;
+  }
+  if (
+    i > 0 &&
+    i + 4 <= limit &&
+    bytes[i] === 0x25 &&
+    bytes[i + 1] === 0x50 &&
+    bytes[i + 2] === 0x44 &&
+    bytes[i + 3] === 0x46
+  ) {
+    return i;
+  }
+  return 0;
+}
+
+async function extractPdfOnce(
+  bytes: Uint8Array,
+  maxChars: number,
+  options?: { includePageMarkers?: boolean | undefined }
 ): Promise<ExtractResponse> {
   // Before the parser, not inside it: by the time pdf.js has inflated a stream
   // the memory is spent, and there is no option that makes it stop earlier.
@@ -137,7 +185,11 @@ export async function extractPdf(
         line.push(item.str);
         if (item.hasEOL) line.push('\n');
       }
-      const text = line.join('');
+      const rawText = line.join('');
+      const text =
+        options?.includePageMarkers === true && rawText.trim() !== ''
+          ? `== Page ${page} ==\n${rawText}`
+          : rawText;
       if (length + text.length >= maxChars) {
         parts.push(text.slice(0, maxChars - length));
         clipped = true;

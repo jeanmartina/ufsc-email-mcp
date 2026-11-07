@@ -23,9 +23,11 @@ const READ_TOOLS = [
   'get_attachments',
   'get_message',
   'get_server_info',
+  'list_archive_entries',
   'list_mailboxes',
   'list_messages',
   'list_new_messages',
+  'read_archive_entry',
 ];
 const WRITE_TOOLS = [
   'delete_messages',
@@ -51,10 +53,10 @@ describe('tool registration', () => {
     await harness.close();
   });
 
-  it('registers 12 tools when writing is enabled, and never a sending one', async () => {
+  it('registers 14 tools when writing is enabled, and never a sending one', async () => {
     const harness = await connect({ config: { readOnly: false } });
     const names = await toolNames(harness.client);
-    expect(names).toHaveLength(12);
+    expect(names).toHaveLength(14);
     // The load-bearing property of this server: it has no way to send mail, so
     // an injected instruction has nothing here to exfiltrate through.
     expect(names.join(' ')).not.toMatch(
