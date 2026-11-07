@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { confirmationPrompt, setResourceKey } from 'mcp-approval';
 import type { Approver, ConfirmationStore } from 'mcp-approval';
+import { buildCanonicalMoveResourceKey } from '../confirmation-store.js';
 import {
   addressListParam,
   confirmTokenParam,
@@ -358,11 +359,22 @@ export function registerWriteTools(
         openWorldHint: false,
       },
       outputSchema: z.object({
-        action: z.enum(['moved', 'copied']),
-        source: z.string(),
+        status: z.enum(['confirmation_required', 'completed']).optional(),
+        confirm_token: z.string().optional(),
+        expires_in_seconds: z.number().int().optional(),
+        operation_summary: z
+          .object({
+            mode: z.enum(['move', 'copy']),
+            source: z.string(),
+            message_count: z.number().int(),
+            destinations: z.array(z.string()),
+          })
+          .optional(),
+        action: z.enum(['moved', 'copied']).optional(),
+        source: z.string().optional(),
         destination: z.string().optional(),
         destinations: z.array(z.string()).optional(),
-        uids: z.array(z.number().int()),
+        uids: z.array(z.number().int()).optional(),
         mark_as_read: z.boolean().optional(),
         messages: z
           .array(
@@ -407,20 +419,14 @@ export function registerWriteTools(
           new Set(targets.map((t) => t.destination))
         );
 
-        // Keep single destination resourceKey byte-compatible with existing tokens/tests
-        const canonicalTargets = (moves ?? []).flatMap((item) =>
-          item.uids.map((u) => `${JSON.stringify(item.destination)}:${u}`)
-        );
-        const resourceKey =
-          moves === undefined
-            ? setResourceKey(
-                `${copying ? 'copy_messages' : 'move_messages'}:${JSON.stringify([source, destination])}`,
-                uids!.map(String)
-              )
-            : setResourceKey(
-                `${copying ? 'copy_messages_batch' : 'move_messages_batch'}:${JSON.stringify(source)}`,
-                canonicalTargets
-              );
+        const resourceKey = buildCanonicalMoveResourceKey({
+          source,
+          mode,
+          markAsRead: mark_as_read,
+          uids,
+          destination,
+          moves,
+        });
 
         const details = [
           { label: 'From', value: shownValue(source) },
@@ -453,7 +459,44 @@ export function registerWriteTools(
             'imap-mcp: the user declined. Nothing was moved.'
           );
         }
-        if (outcome.decision === 'pending') return outcome.result;
+        if (outcome.decision === 'pending') {
+          const res = outcome.result;
+          if ('content' in res && Array.isArray(res.content) && res.content.length > 0) {
+            const firstPart = res.content[0];
+            const text =
+              firstPart &&
+              typeof firstPart === 'object' &&
+              'text' in firstPart &&
+              typeof firstPart.text === 'string'
+                ? firstPart.text
+                : '';
+            const match = /confirm_token="([0-9a-f]+)"/.exec(text);
+            if (match?.[1]) {
+              const token = match[1];
+              const structuredSummary = {
+                status: 'confirmation_required',
+                confirm_token: token,
+                expires_in_seconds: confirmations.ttlMinutes * 60,
+                operation_summary: {
+                  mode: copying ? 'copy' : 'move',
+                  source: escapeInvisible(source),
+                  message_count: allUids.length,
+                  destinations: allDestinations.map(escapeInvisible),
+                },
+              };
+              return {
+                ...res,
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: `${text}\n\n${JSON.stringify(structuredSummary, null, 2)}`,
+                  },
+                ],
+              };
+            }
+          }
+          return outcome.result;
+        }
 
         return client.withMailbox(mailbox, false, async (connection) => {
           const messageResults: Array<{
@@ -635,6 +678,7 @@ export function registerWriteTools(
           });
 
           return jsonResult({
+            status: 'completed',
             action: copying ? 'copied' : 'moved',
             source,
             destination:

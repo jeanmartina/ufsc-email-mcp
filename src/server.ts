@@ -5,7 +5,9 @@ import { buildToolFilter, installToolFilter } from 'mcp-tool-allowlist';
 import { ALL_TOOLS, ESSENTIAL_TOOLS, READ_TOOLS } from './tools/catalogue.js';
 
 import type { Config } from './config.js';
-import { ConfirmationStore, createApproval } from 'mcp-approval';
+import { ConfirmationStore, createApproval, type Approver } from 'mcp-approval';
+import { PersistentConfirmationStore } from './confirmation-store.js';
+import crypto from 'node:crypto';
 import type { ChildLimits } from './extract/index.js';
 import { ImapClient, type ImapClientFactory } from './imap.js';
 import { registerAttachmentResources } from './resources.js';
@@ -37,6 +39,8 @@ function packageVersion(): string {
 export interface ServerDeps {
   imapFactory?: ImapClientFactory;
   extractLimits?: ChildLimits;
+  confirmations?: ConfirmationStore;
+  approval?: Approver;
 }
 
 export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
@@ -66,13 +70,25 @@ export function createServer(config: Config, deps: ServerDeps = {}): McpServer {
     deps.imapFactory === undefined
       ? new ImapClient(config)
       : new ImapClient(config, deps.imapFactory);
-  const confirmations = new ConfirmationStore();
+  const confirmations =
+    deps.confirmations ?? new PersistentConfirmationStore();
   // One approver per server: it holds the key that seals the request state
   // carried out through the client and back.
-  const approval = createApproval({
-    server: 'imap-mcp',
-    elicitation: config.elicitation,
-  });
+  const stableKey = crypto
+    .createHash('sha256')
+    .update(
+      process.env.MCP_AUTH_TOKEN ||
+        config.imap.password ||
+        'ufsc-imap-mcp-stable-approval-key'
+    )
+    .digest();
+  const approval =
+    deps.approval ??
+    createApproval({
+      server: 'imap-mcp',
+      elicitation: config.elicitation,
+      key: stableKey,
+    });
 
   const server = new McpServer(
     {

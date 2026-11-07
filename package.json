@@ -1,6 +1,6 @@
 {
   "name": "ufsc-email-mcp",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "mcpName": "io.github.ni-c/imap-mcp",
   "description": "MCP server para e-mail institucional da UFSC (IMAP) com marcacao de leitura, movimentacao e suporte a Streamable HTTP",
   "keywords": [

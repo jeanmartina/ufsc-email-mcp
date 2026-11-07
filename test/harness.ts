@@ -7,6 +7,7 @@ import { CallToolResultSchema } from '@modelcontextprotocol/core';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import type { CallToolResult } from '@modelcontextprotocol/client';
 
+import type { Approver, ConfirmationStore } from 'mcp-approval';
 import type { Config } from '../src/config.js';
 import { DEFAULT_ATTACHMENT_TYPES } from '../src/config.js';
 import type { ChildLimits } from '../src/extract/index.js';
@@ -92,6 +93,8 @@ export async function connect(
     /** Omitted means the client does not support elicitation at all. */
     elicit?: ElicitBehaviour;
     extractLimits?: ChildLimits;
+    confirmations?: ConfirmationStore;
+    approval?: Approver;
   } = {}
 ): Promise<Harness> {
   const imap = new FakeImap(options.mailboxes ?? defaultMailboxes());
@@ -103,6 +106,10 @@ export async function connect(
     ...(options.extractLimits !== undefined
       ? { extractLimits: options.extractLimits }
       : {}),
+    ...(options.confirmations !== undefined
+      ? { confirmations: options.confirmations }
+      : {}),
+    ...(options.approval !== undefined ? { approval: options.approval } : {}),
   });
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();

@@ -1,7 +1,10 @@
 import http from 'node:http';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import { loadConfig } from './dist/config.js';
 import { createServer } from './dist/server.js';
+import { PersistentConfirmationStore } from './dist/confirmation-store.js';
+import { createApproval } from 'mcp-approval';
 import {
   cleanupAllTempFiles,
   resolveTempDownload,
@@ -49,9 +52,31 @@ if (config.readOnly) {
   );
 }
 
-const handler = createMcpHandler(() => createServer(config), {
-  responseMode: 'json',
+const sharedConfirmations = new PersistentConfirmationStore();
+const approvalKey = crypto
+  .createHash('sha256')
+  .update(
+    process.env.MCP_AUTH_TOKEN ||
+      config.password ||
+      'ufsc-imap-mcp-stable-approval-key'
+  )
+  .digest();
+const sharedApproval = createApproval({
+  server: 'imap-mcp',
+  elicitation: config.elicitation,
+  key: approvalKey,
 });
+
+const handler = createMcpHandler(
+  () =>
+    createServer(config, {
+      confirmations: sharedConfirmations,
+      approval: sharedApproval,
+    }),
+  {
+    responseMode: 'json',
+  }
+);
 
 function computeRequestBaseUrl(req) {
   if (config.publicBaseUrl) return config.publicBaseUrl;
