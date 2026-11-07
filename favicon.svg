@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="imap-mcp">
+  <!-- Hand-written, not generated: a favicon has no source that could drift.
+       The indigo is the same #4f46e5 as the theme colour in .vitepress/config.ts,
+       and the mark reads at 16px, which rules out anything finer than this. -->
+  <rect width="32" height="32" rx="7" fill="#4f46e5" />
+  <!-- A letter that has been opened, not one on its way out: no arrow, no wings.
+       This server reads and files mail, and deliberately cannot send any. -->
+  <rect x="6" y="9.5" width="20" height="13" rx="2.4" fill="none" stroke="#ffffff"
+        stroke-width="2" />
+  <path d="M8 11.5 16 17.5 24 11.5" fill="none" stroke="#ffffff" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" />
+</svg>
