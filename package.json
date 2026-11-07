@@ -13,16 +13,15 @@
     "read-only"
   ],
   "license": "MIT",
-  "author": "Willi Thiel",
+  "author": "Jean Everson Martina",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ni-c/imap-mcp.git"
+    "url": "git+https://github.com/jeanmartina/ufsc-email-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/ni-c/imap-mcp/issues"
+    "url": "https://github.com/jeanmartina/ufsc-email-mcp/issues"
   },
-  "homepage": "https://imap-mcp.ni-c.de",
-  "funding": "https://github.com/sponsors/ni-c",
+  "homepage": "https://github.com/jeanmartina/ufsc-email-mcp#readme",
   "type": "module",
   "publishConfig": {
     "access": "public"

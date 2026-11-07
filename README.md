@@ -130,6 +130,26 @@ No seu arquivo `claude_desktop_config.json` (geralmente em `~/.config/Claude/cla
 }
 ```
 
+### Opção 4: Configuração no Cursor (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "ufsc-email": {
+      "command": "node",
+      "args": ["/caminho/absoluto/ufsc-email-mcp/dist/index.js"],
+      "env": {
+        "IMAP_HOST": "imap.ufsc.br",
+        "IMAP_PORT": "993",
+        "IMAP_TLS": "true",
+        "IMAP_USER": "seu.idufsc@ufsc.br",
+        "IMAP_PASSWORD": "sua_senha_idufsc"
+      }
+    }
+  }
+}
+```
+
 ---
 
 ## 🤖 Conectando com o ChatGPT
@@ -158,14 +178,34 @@ Marca uma ou mais mensagens como lidas ou não lidas na pasta informada.
 
 ### 2. `move_messages`
 
-Move mensagens para uma pasta de destino, opcionalmente marcando-as como lidas.
+Move mensagens para uma pasta de destino (individualmente ou em lote), opcionalmente marcando-as como lidas.
+Por segurança contra movimentações acidentais, a ferramenta utiliza confirmação explícita em duas etapas:
+
+1. **Etapa 1 (Prévia e Emissão de Token):** Chame a ferramenta com os argumentos desejados sem `confirm_token`. O servidor retornará o resumo da operação (`operation_summary`), o tempo de validade (`expires_in_seconds`) e um token exclusivo (`confirm_token`).
+2. **Etapa 2 (Confirmação e Execução):** Chame a ferramenta novamente repetindo os mesmos parâmetros e incluindo `confirm_token: "<token>"`. O servidor validará o token atômico de uso único e executará a movimentação.
 
 ```json
+// Chamada com confirmação
 {
   "mailbox": "INBOX",
   "destination": "Arquivo",
   "uids": [1024],
-  "mark_as_read": true
+  "mark_as_read": true,
+  "confirm_token": "token_recebido_na_etapa_1"
+}
+```
+
+Também suporta movimentação em lote para múltiplos destinos na mesma requisição:
+
+```json
+{
+  "mailbox": "INBOX",
+  "mode": "move",
+  "mark_as_read": true,
+  "moves": [
+    { "uids": [1024, 1025], "destination": "Arquivo.2026" },
+    { "uids": [1026], "destination": "LATAM" }
+  ]
 }
 ```
 
