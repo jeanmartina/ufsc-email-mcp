@@ -58,7 +58,7 @@
     "mailparser": "^3.14.5",
     "mcp-approval": "^0.8.2",
     "mcp-tool-allowlist": "^0.2.2",
-    "unpdf": "^1.8.1",
+    "unpdf": "^2.2.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
